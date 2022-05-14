@@ -2,7 +2,6 @@ package main
 
 import "core:fmt"
 import "core:strings"
-// import "core:mem"
 
 // odin build . -o:speed -no-bounds-check -disable-assert
 
