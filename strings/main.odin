@@ -6,7 +6,16 @@ import "core:strings"
 // odin build . -o:speed -no-bounds-check -disable-assert
 
 main :: proc() {
-    concat_strings()
+    character_based_strings()
+}
+
+character_based_strings :: proc() {
+    phrase := "日本語は話せません" // I don't speak Japanese
+    fmt.println("`phrase` length:", len(phrase)) // UTF-8
+
+    #unroll for r, i in "日本語は話せません" {
+		fmt.println(r, i)
+	}
 }
 
 concat_strings :: proc() {
