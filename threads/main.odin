@@ -33,7 +33,7 @@ basic_threads :: proc() {
         }
     }
 
-    counter := 0
+    // counter := 0
     // for len(threads) > 0 {
     //     counter += 1
     //     for i := 0; i < len(threads); {
@@ -46,8 +46,7 @@ basic_threads :: proc() {
     //         }
     //     }
     // }
-
-    fmt.println("Counter:", counter) // 77567
+    // fmt.println("Counter:", counter) // 77567
 
     for t in threads {
         thread.join(t)
