@@ -1,8 +1,10 @@
 package main
 
+import "core:os"
 import "core:fmt"
 import "core:mem"
 import "core:slice"
+import "core:runtime"
 import "core:strings"
 import "curl"
 
@@ -26,7 +28,9 @@ main :: proc() {
 
 entry_point :: proc() {
     s := fetch("https://www.google.com")
-    fmt.println("str", s)
+    if os.write_entire_file("page.html", transmute([]byte)s) {
+        fmt.println("File written successfully")
+    }
 }
 
 fetch :: proc(url: string) -> string {
@@ -34,7 +38,8 @@ fetch :: proc(url: string) -> string {
     defer curl.easy_cleanup(handle)
 
     data := [dynamic]byte{}
-    write_callback :: proc(chunk: rawptr, size, count: uint, data: ^[dynamic]byte) -> uint {
+    write_callback :: proc "c" (chunk: rawptr, size, count: uint, data: ^[dynamic]byte) -> uint {
+        context = runtime.default_context()
         byte_count := size * count
         s := slice.bytes_from_ptr(chunk, int(byte_count))
         append(data, ..s[:])
