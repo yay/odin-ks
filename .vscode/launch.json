@@ -8,6 +8,7 @@
             "type": "lldb",
             "request": "launch",
             "name": "Debug",
+            "preLaunchTask": "Debug Build",
             "program": "${workspaceFolder}/${relativeFileDirname}/${relativeFileDirname}.bin",
             "args": ["${workspaceFolder}/${relativeFileDirname}/main.odin"],
             "cwd": "${workspaceFolder}"
