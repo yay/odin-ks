@@ -27,13 +27,16 @@ main :: proc() {
 }
 
 entry_point :: proc() {
-    s := fetch("https://www.google.com")
-    if os.write_entire_file("page.html", transmute([]byte)s) {
-        fmt.println("File written successfully")
+    if s, ok := fetch("https://www.google.com"); ok {
+        if os.write_entire_file("page.html", transmute([]byte)s) {
+            fmt.println("File written successfully")
+        }
+    } else {
+        fmt.println("Failed to fetch page")
     }
 }
 
-fetch :: proc(url: string) -> string {
+fetch :: proc(url: string) -> (string, bool) {
     handle := curl.easy_init()
     defer curl.easy_cleanup(handle)
 
@@ -47,17 +50,17 @@ fetch :: proc(url: string) -> string {
     }
 
     if curl.E_OK != curl.easy_setopt(handle, curl.OPT_URL, url) {
-        return ""
+        return "", false
     }
     if curl.E_OK != curl.easy_setopt(handle, curl.OPT_WRITEFUNCTION, write_callback) {
-        return ""
+        return "", false
     }
     if curl.E_OK != curl.easy_setopt(handle, curl.OPT_WRITEDATA, &data) {
-        return ""
+        return "", false
     }
     if curl.E_OK != curl.easy_perform(handle) {
-        return ""
+        return "", false
     }
 
-    return string(data[:])
+    return string(data[:]), true
 }
