@@ -7,7 +7,7 @@ main :: proc() {
         name: string,
         age: int,
     }
-    Maybe :: union($T: typeid) #maybe {T} // this is already built-in
+    Maybe :: union($T: typeid) {T} // this is already built-in
     mi: Maybe(u8)
     mpi: Maybe(^u8)
     p: Person
@@ -32,7 +32,19 @@ main :: proc() {
     mi = 123
     x := mi.?
     i, i_ok = mi.?
-    fmt.println(x, i, i_ok) // 123 123 true
+    fmt.println(x) // 123
+    fmt.println(i, i_ok) // 123 true
+
+    // Since dev-2022-06 a union of a single type is effectively an optional
+    {
+        maybe_int: union { int }
+        i, i_ok := maybe_int.?
+        fmt.println(i, i_ok) // 0 false
+
+        maybe_int = 42
+        i, i_ok = maybe_int.?
+        fmt.println(i, i_ok) // 42 true
+    }
 
     // mp.name = "Fred" // 'mp' of type 'Maybe(Person)' has no field 'name'
     // mp.?.name = "Fred" // 'Cannot assign to 'mp.?.name'
