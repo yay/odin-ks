@@ -3,9 +3,31 @@ package main
 import "core:fmt"
 import "core:thread"
 import "core:time"
+import "core:runtime"
+import "core:sys/darwin"
+import "core:strings"
+import "core:c"
+import "core:testing"
 
 main :: proc() {
     basic_threads()
+    // parallel_loop()
+}
+
+get_darwin_ncpu :: proc() -> int {
+    mib := [2]i32{6, 3} // CTL_HW (generic cpu/io), HW_NCPU (number of cpus)
+	out := u32(0)
+	nout := i64(size_of(out))
+	ret := darwin.syscall_sysctl(&mib[0], 2, &out, &nout, nil, 0)
+	if ret >= 0 && int(out) > 0 {
+		return int(out)
+	}
+	return 1
+}
+
+@test
+test_me :: proc(^testing.T) {
+    assert(get_darwin_ncpu() == 10) // Apple M1 Pro
 }
 
 prefix_table := [?]string{"White", "Red", "Green", "Blue", "Octarine", "Black"}
@@ -55,3 +77,16 @@ basic_threads :: proc() {
         fmt.println("Thread", t.user_index, "is done:", thread.is_done(t))
     }
 }
+
+parallel_loop :: proc() {
+    threads := make([dynamic]^thread.Thread, 0, get_darwin_ncpu())
+    defer delete(threads)
+}
+
+// @thread_local is the same as @static but thread local.
+
+// Thread local storage is supported at the file scope:
+// @(thread_local="default") or @thread_local
+// @(thread_local="localdynamic")
+// @(thread_local="initialexec")
+// @(thread_local="localexec")

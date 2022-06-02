@@ -38,8 +38,14 @@ main :: proc() {
         results[i].depth = i * 2 + MIN_DEPTH
     }
 
-    for item in results {
-        iters := 1 << uint(max_depth - item.depth + MIN_DEPTH)
+    for res in results {
+        count := 1 << uint(max_depth - res.depth + MIN_DEPTH)
+        // the default temp allocator is thread local
+        sum := 0
+        for i in 0..<count {
+            sum += check(make_node(res.depth))
+        }
+        // res.checksum = sum
     }
 }
 
