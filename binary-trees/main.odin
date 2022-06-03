@@ -1,14 +1,12 @@
 package main
 
-// Build using:
-// odin build . -o:speed
-
 // https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/binarytrees-rust-5.html
 
 import "core:os"
 import "core:strconv"
 import "core:mem"
 import "core:fmt"
+// import "core:mem/virtual"
 
 Tree :: struct {
     left, right: ^Tree,
@@ -58,6 +56,9 @@ main :: proc() {
 }
 
 bottom_up_tree :: proc(depth: int) -> ^Tree {
+    // Temp allocator is a ring buffer with a fixed size of only a few megabytes.
+    // For example, to increase the size to 128MB build using:
+    // odin build . -o:speed -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=134217728
     tree := new(Tree, context.temp_allocator)
     if depth > 0 {
         tree.right = bottom_up_tree(depth - 1)
