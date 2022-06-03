@@ -85,21 +85,6 @@ parallel_loop :: proc() {
     ncpu := get_darwin_ncpu()
     threads := make([dynamic]^thread.Thread, 0, ncpu)
     defer delete(threads)
-
-    worker := proc(t: ^thread.Thread) {
-		// for iteration in 1 ..= 5 {
-			// time.sleep(1 * time.Millisecond)
-		// }
-	}
-
-    for i in 0..<ncpu {
-        if t := thread.create(worker); t != nil {
-            t.init_context = context // Maybe(runtime.Context)
-            t.user_index = len(threads)
-            append(&threads, t)
-            thread.start(t)
-        }
-    }
 }
 
 // @thread_local is the same as @static but thread local.
