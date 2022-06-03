@@ -65,7 +65,6 @@ fill_region :: proc(t: thread.Task) {
             m[x][y] = init(x, y)
         }
     }
-    fmt.println(x1, y1, x2, y2)
     free(work)
 }
 
