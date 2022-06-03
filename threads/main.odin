@@ -14,8 +14,11 @@ main :: proc() {
     // parallel_loop()
 }
 
+CTL_HW :: 6  // generic cpu/io
+HW_NCPU :: 3 // number of cpus
+
 get_darwin_ncpu :: proc() -> int {
-    mib := [2]i32{6, 3} // CTL_HW (generic cpu/io), HW_NCPU (number of cpus)
+    mib := [2]i32{CTL_HW, HW_NCPU}
 	out := u32(0)
 	nout := i64(size_of(out))
 	ret := darwin.syscall_sysctl(&mib[0], 2, &out, &nout, nil, 0)
@@ -79,8 +82,24 @@ basic_threads :: proc() {
 }
 
 parallel_loop :: proc() {
-    threads := make([dynamic]^thread.Thread, 0, get_darwin_ncpu())
+    ncpu := get_darwin_ncpu()
+    threads := make([dynamic]^thread.Thread, 0, ncpu)
     defer delete(threads)
+
+    worker := proc(t: ^thread.Thread) {
+		// for iteration in 1 ..= 5 {
+			// time.sleep(1 * time.Millisecond)
+		// }
+	}
+
+    for i in 0..<ncpu {
+        if t := thread.create(worker); t != nil {
+            t.init_context = context // Maybe(runtime.Context)
+            t.user_index = len(threads)
+            append(&threads, t)
+            thread.start(t)
+        }
+    }
 }
 
 // @thread_local is the same as @static but thread local.
