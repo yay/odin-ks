@@ -1,69 +1,76 @@
 package main
 
-// https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/binarytrees-gpp-7.html
+// Build using:
+// odin build . -o:speed
+
+// https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/binarytrees-rust-5.html
 
 import "core:os"
 import "core:strconv"
 import "core:mem"
 import "core:fmt"
 
-Node :: struct {
-    l, r: ^Node,
+Tree :: struct {
+    left, right: ^Tree,
 }
 
-MIN_DEPTH :: 4
-
 main :: proc() {
-    depth := 0
+    depth := 10
     if len(os.args) == 2 {
         if d, ok := strconv.parse_int(os.args[1]); ok {
             depth = d
-        } else {
-            fmt.println("Invalid depth:", os.args[1])
-            os.exit(1)
         }
     }
-    max_depth := max(MIN_DEPTH + 2, depth)
-    stretch_depth := max_depth + 1
+    min_depth := 4
+    max_depth := max(min_depth + 2, depth)
 
     {
-        c := make_node(stretch_depth)
-        fmt.println("stretch tree of depth", stretch_depth, "\tcheck:", check(c))
+        depth := max_depth + 1
+        tree := bottom_up_tree(depth)
+        fmt.println("stretch tree of depth", depth, "\tcheck:", check(tree))
     }
 
-    c := make_node(max_depth)
-    results := make([dynamic]struct{depth, checksum: int}, (max_depth - MIN_DEPTH) / 2 + 1)
+    // c := bottom_up_tree(max_depth)
+    // results := make([dynamic]struct{depth, checksum: int}, (max_depth - min_depth) / 2 + 1)
 
-    for i in 0..<len(results) {
-        results[i].depth = i * 2 + MIN_DEPTH
-    }
+    // for i in 0..<len(results) {
+    //     results[i].depth = i * 2 + min_depth
+    // }
 
-    for res in results {
-        count := 1 << uint(max_depth - res.depth + MIN_DEPTH)
-        // the default temp allocator is thread local
-        sum := 0
-        for i in 0..<count {
-            sum += check(make_node(res.depth))
-        }
-        // res.checksum = sum
-    }
+    // for i in 0..<len(results) {
+    //     res := results[i]
+    //     count := 1 << uint(max_depth - res.depth + min_depth)
+    //     // the default temp allocator is thread local
+    //     sum := 0
+    //     for i in 0..<count {
+    //         sum += check(bottom_up_tree(res.depth))
+    //     }
+    //     res.checksum = sum
+    // }
+
+    // for res in results {
+    //     fmt.println(1 << uint(max_depth - res.depth + min_depth),
+    //         "\t trees of depth", res.depth,
+    //         "\t check:", res.checksum)
+    // }
+
+    // fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(c))
 }
 
-check :: proc(n: ^Node) -> int {
-    if n.l != nil {
-        return check(n.l) + 1 + check(n.r)
+bottom_up_tree :: proc(depth: int) -> ^Tree {
+    tree := new(Tree, context.temp_allocator)
+    if depth > 0 {
+        tree.right = bottom_up_tree(depth - 1)
+        tree.left = bottom_up_tree(depth - 1)
     }
-    return 1
+    return tree
 }
 
-make_node :: proc(d: int) -> ^Node {
-    n := new(Node, context.temp_allocator)
-    if d > 0 {
-        n.l = make_node(d - 1)
-        n.r = make_node(d - 1)
+check :: proc(tree: ^Tree) -> int {
+    using tree
+    if left != nil && right != nil {
+        return 1 + check(right) + check(left)
     } else {
-        n.l = nil
-        n.r = nil
+        return 1
     }
-    return n
 }
