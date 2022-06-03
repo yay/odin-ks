@@ -6,7 +6,7 @@ import "core:os"
 import "core:strconv"
 import "core:mem"
 import "core:fmt"
-// import "core:mem/virtual"
+// import "core:mem/virtual" // Growing_Arena is not implemented on Darwin yet
 
 Tree :: struct {
     left, right: ^Tree,
@@ -28,36 +28,29 @@ main :: proc() {
         fmt.println("stretch tree of depth", depth, "\tcheck:", check(tree))
     }
 
-    // c := bottom_up_tree(max_depth)
-    // results := make([dynamic]struct{depth, checksum: int}, (max_depth - min_depth) / 2 + 1)
+    results := make([dynamic]struct{depth, checksum: int}, (max_depth - min_depth) / 2 + 1)
+    for i in 0..<len(results) {
+        results[i].depth = i * 2 + min_depth
+    }
+    for i in 0..<len(results) {
+        depth := results[i].depth
+        iterations := 1 << uint(max_depth - depth + min_depth)
+        results[i].checksum = inner(depth, iterations)
+    }
+    for res in results {
+        fmt.println(1 << uint(max_depth - res.depth + min_depth),
+            "\t trees of depth", res.depth,
+            "\t check:", res.checksum)
+    }
 
-    // for i in 0..<len(results) {
-    //     results[i].depth = i * 2 + min_depth
-    // }
-
-    // for i in 0..<len(results) {
-    //     res := results[i]
-    //     count := 1 << uint(max_depth - res.depth + min_depth)
-    //     // the default temp allocator is thread local
-    //     sum := 0
-    //     for i in 0..<count {
-    //         sum += check(bottom_up_tree(res.depth))
-    //     }
-    //     res.checksum = sum
-    // }
-
-    // for res in results {
-    //     fmt.println(1 << uint(max_depth - res.depth + min_depth),
-    //         "\t trees of depth", res.depth,
-    //         "\t check:", res.checksum)
-    // }
-
-    // fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(c))
+    tree := bottom_up_tree(max_depth)
+    fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(tree))
 }
 
 bottom_up_tree :: proc(depth: int) -> ^Tree {
+    // The default temp allocator is thread local.
     // Temp allocator is a ring buffer with a fixed size of only a few megabytes.
-    // For example, to increase the size to 128MB build using:
+    // For example, to increase the size to 128MB compile with:
     // odin build . -o:speed -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=134217728
     tree := new(Tree, context.temp_allocator)
     if depth > 0 {
@@ -74,4 +67,13 @@ check :: proc(tree: ^Tree) -> int {
     } else {
         return 1
     }
+}
+
+inner :: proc(depth: int, iterations: int) -> int {
+    sum := 0
+    for i in 0..<iterations {
+        tree := bottom_up_tree(depth)
+        sum += check(tree)
+    }
+    return sum
 }
