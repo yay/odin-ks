@@ -6,7 +6,34 @@
         {
             "label": "Debug Build",
             "type": "shell",
-            "command": "cd ${workspaceFolder}/${relativeFileDirname} && odin build . -debug",
+            "command": "export ODIN_ERROR_POS_STYLE=unix && cd ${workspaceFolder}/${relativeFileDirname} && odin build . -debug",
+            "problemMatcher": {
+                "owner": "odin",
+                "fileLocation": [
+                    "absolute"
+                ],
+                "pattern": {
+                    "regexp": "^(.*):(\\d+):(\\d+):\\s+(.*):\\s+(.*)$",
+                    "file": 1,
+                    "line": 2,
+                    "column": 3,
+                    "severity": 4,
+                    "message": 5
+                }
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Run",
+            "type": "shell",
+            "command": "${workspaceFolder}/${relativeFileDirname}/${relativeFileDirname}.bin",
+            "dependsOn": [
+                "Debug Build"
+            ],
+            "problemMatcher": []
         }
     ]
 }
