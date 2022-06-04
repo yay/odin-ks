@@ -6,6 +6,7 @@ import "core:os"
 import "core:strconv"
 import "core:mem"
 import "core:fmt"
+import "core:thread"
 // import "core:mem/virtual" // Growing_Arena is not implemented on Darwin yet
 
 Tree :: struct {

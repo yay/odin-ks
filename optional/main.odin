@@ -35,7 +35,6 @@ main :: proc() {
     fmt.println(x) // 123
     fmt.println(i, i_ok) // 123 true
 
-    // Since dev-2022-06 a union of a single type is effectively an optional
     {
         maybe_int: union { int }
         i, i_ok := maybe_int.?
