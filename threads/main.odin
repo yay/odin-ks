@@ -6,22 +6,27 @@ import "core:time"
 import "core:runtime"
 import "core:sys/darwin"
 import "core:strings"
+import "core:os"
 import "core:c"
 import "core:math"
 import "core:testing"
 
+width :: 640
+height :: 480
+
 main :: proc() {
     render(proc(x, y: int) -> Color {
-        return Color{r = f32(x), g = f32(y), b = f32(0)}
+        return Color{
+            r = f32(x) / f32(width - 1),
+            g = f32(y) / f32(height - 1),
+            b = f32(0.25),
+        }
     })
 }
 
 Color :: struct {
     r, g, b: f32,
 }
-
-width :: 640
-height :: 480
 
 Work :: struct {
     m: ^[width][height]Color,
@@ -55,6 +60,25 @@ render :: proc(init: proc(int, int) -> Color) {
 
     thread.pool_start(&pool)
     thread.pool_finish(&pool)
+
+    save_ppm(m)
+}
+
+save_ppm :: proc(m: ^[width][height]Color) {
+    f, err := os.open("out.ppm", os.O_CREATE | os.O_WRONLY, 0o0777)
+    if err != os.ERROR_NONE {
+        fmt.print("Failed to open file:", err)
+        return
+    }
+    defer os.close(f)
+
+    fmt.fprintf(f, "P3\n%d %d\n255\n", width, height)
+    for y in 0..<height {
+        for x in 0..<width {
+            c := m[x][y]
+            fmt.fprintf(f, "%d %d %d\n", int(math.floor(c.r * 255)), int(math.floor(c.g * 255)), int(math.floor(c.b * 255)))
+        }
+    }
 }
 
 fill_region :: proc(t: thread.Task) {
