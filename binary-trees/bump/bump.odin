@@ -2,6 +2,7 @@ package bump
 
 import "core:intrinsics"
 import "core:mem"
+import "core:math"
 
 // After this point, we try to hit page boundaries instead of powers of 2.
 PAGE_STRATEGY_CUTOFF :: 0x1000
@@ -32,11 +33,14 @@ FIRST_ALLOCATION_GOAL :: 1 << 9
 // take the alignment into account.
 DEFAULT_CHUNK_SIZE_WITHOUT_FOOTER :: FIRST_ALLOCATION_GOAL - OVERHEAD
 
-ChunkFooter :: struct {
-    data: rawptr,
+Layout :: struct {
     size: int,
     align: int,
+}
 
+ChunkFooter :: struct {
+    data: rawptr,
+    layout: Layout,
     // Link to the previous chunk.
     //
     // Note that the last node in the `prev` linked list is the canonical empty
@@ -49,62 +53,67 @@ ChunkFooter :: struct {
 
 EMPTY_CHUNK := ChunkFooter{
     data = nil,
-    size = 0,
-    align = 1,
+    layout = Layout {
+        size = 0,
+        align = 1,
+    },
 }
 
 Bump :: struct {
     // The current chunk we are bump allocating within.
-    current_chunk_footer: ChunkFooter,
+    current_chunk_footer: ^ChunkFooter,
 }
 
-create :: proc() -> Maybe(Bump) {
-    return init_with_capacity(0)
-}
-
-init_with_capacity :: proc(capacity: int) -> Maybe(Bump) {
-    if capacity == 0 {
-        return Bump {}
+create :: proc() -> Bump {
+    return Bump {
+        current_chunk_footer = &EMPTY_CHUNK,
     }
+}
 
-    chunk_footer, ok := new_chunk(nil, capacity, 1, &EMPTY_CHUNK).?
-    if !ok {
+destroy :: proc(bump: ^Bump) {
+    dealloc_chunk_list(bump.current_chunk_footer)
+}
+
+dealloc_chunk_list :: proc(footer: ^ChunkFooter) {
+    footer := footer
+    for footer != &EMPTY_CHUNK {
+        f := footer
+        footer = footer.prev
+        mem.free(f.data)
+    }
+}
+
+create_with_capacity :: proc(capacity: int) -> Maybe(Bump) {
+    if capacity <= 0 {
         return nil
     }
 
-    return Bump {
-        current_chunk_footer = chunk_footer,
+    layout := Layout{
+        size = capacity,
+        align = 1,
     }
+    if chunk_footer := new_chunk(nil, layout, &EMPTY_CHUNK); chunk_footer != nil {
+        return Bump {
+            current_chunk_footer = chunk_footer,
+        }
+    }
+
+    return nil
 }
 
-new_chunk :: proc(
-    new_size_without_footer: Maybe(int),
-    size: int,
-    align: int,
-    prev: ^ChunkFooter,
-) -> Maybe(^ChunkFooter) {
+// Allocate a new chunk and return its initialized footer.
+new_chunk :: proc(new_size_without_footer: Maybe(int), layout: Layout, prev: ^ChunkFooter) -> ^ChunkFooter {
     new_size_without_footer := new_size_without_footer.? or_else DEFAULT_CHUNK_SIZE_WITHOUT_FOOTER
-    align := max(CHUNK_ALIGN, align)
-    if requested_size, ok := round_up_to(size, align).?; ok {
-        new_size_without_footer = max(new_size_without_footer, requested_size)
-    } else {
-        panic("requested allocation size overflowed")
-    }
+    align := max(layout.align, CHUNK_ALIGN)
+    new_size_without_footer = max(new_size_without_footer, round_up_to(layout.size, align))
 
     if new_size_without_footer < PAGE_STRATEGY_CUTOFF {
-        new_size_without_footer =
-            next_power_of_two(new_size_without_footer + OVERHEAD) - OVERHEAD
-    } else if rounded, ok := round_up_to(new_size_without_footer + OVERHEAD, 0x1000).?; ok {
-        new_size_without_footer = rounded - OVERHEAD
+        new_size_without_footer = next_power_of_two(new_size_without_footer + OVERHEAD) - OVERHEAD
     } else {
-        return nil
+        new_size_without_footer = round_up_to(new_size_without_footer + OVERHEAD, 0x1000) - OVERHEAD
     }
 
-    size, ok := intrinsics.overflow_add(new_size_without_footer, FOOTER_SIZE)
-    if !ok {
-        panic("requested allocation size overflowed")
-    }
-
+    size := new_size_without_footer + FOOTER_SIZE
     data := (^u8)(mem.alloc(size, align))
     if data == nil {
         return nil
@@ -114,8 +123,10 @@ new_chunk :: proc(
 
     mem.copy_non_overlapping(&ChunkFooter{
         data = data,
-        size = size,
-        align = align,
+        layout = Layout {
+            size = size,
+            align = align,
+        },
         prev = prev,
         ptr = footer_ptr,
     }, footer_ptr, 1)
@@ -123,29 +134,99 @@ new_chunk :: proc(
     return footer_ptr
 }
 
-// `divisor` must be a power of 2.
-round_up_to :: proc(n, divisor: int) -> Maybe(int) {
-    if sum, ok := intrinsics.overflow_add(n, divisor - 1); ok {
-        return sum & ~(divisor - 1)
-    }
-    return nil
+round_up_to :: proc(n, divisor: int) -> int {
+    assert(divisor > 0)
+    assert(math.is_power_of_two(divisor))
+    return (n + divisor - 1) & ~(divisor - 1)
+}
+
+round_down_to :: proc(n, divisor: int) -> int {
+    assert(divisor > 0)
+    assert(math.is_power_of_two(divisor))
+    return n & ~(divisor - 1)
 }
 
 next_power_of_two :: proc(n: int) -> int {
     if n <= 1 {
         return 0
     }
-
     p := n - 1
     z := intrinsics.count_leading_zeros(p)
     return (max(int) >> uint(z)) + 1
 }
 
 alloc :: proc(bump: ^Bump, val: $T) -> ^T {
-    size := size_of(T)
-    align := align_of(T)
+    layout := Layout {
+        size = size_of(T),
+        align = align_of(T),
+    }
+    p := (^T)(try_alloc_layout(bump, layout))
+    if p == nil {
+        return nil
+    }
+    val := val
+    mem.copy_non_overlapping(p, &val, size_of(T))
+    return p
 }
 
-destroy :: proc() {
+try_alloc_layout :: proc(bump: ^Bump, layout: Layout) -> rawptr {
+    if p := try_alloc_layout_fast(bump, layout); p != nil {
+        return p
+    }
+    return alloc_layout_slow(bump, layout)
+}
 
+try_alloc_layout_fast :: proc(bump: ^Bump, layout: Layout) -> rawptr {
+    footer := bump.current_chunk_footer
+    ptr := uint(uintptr(footer.ptr))
+    if ptr < uint(layout.size) {
+        return nil
+    }
+
+    ptr -= uint(layout.size)
+    rem := ptr % uint(layout.align)
+    aligned_ptr := ptr - rem
+
+    if aligned_ptr >= uint(uintptr(footer.data)) {
+        aligned_ptr := rawptr(uintptr(aligned_ptr))
+        footer.ptr = aligned_ptr
+        return aligned_ptr
+    }
+
+    return nil
+}
+
+// Slow path allocation for when we need to allocate a new chunk from the
+// parent bump set because there isn't enough room in our current chunk.
+alloc_layout_slow :: proc(bump: ^Bump, layout: Layout) -> rawptr {
+    footer := bump.current_chunk_footer
+
+    // By default, we want our new chunk to be about twice as big
+    // as the previous chunk. If the global allocator refuses it,
+    // we try to divide it by half until it works or the requested
+    // size is smaller than the default footer size.
+    min_new_chunk_size := max(layout.size, DEFAULT_CHUNK_SIZE_WITHOUT_FOOTER)
+    base_size := max((footer.layout.size - FOOTER_SIZE) * 2, min_new_chunk_size)
+
+    new_footer: ^ChunkFooter
+    for {
+        if base_size >= min_new_chunk_size {
+            if new_footer = new_chunk(base_size, layout, footer); new_footer != nil {
+                break
+            }
+            base_size /= 2
+        } else {
+            break
+        }
+    }
+    if new_footer == nil {
+        return nil
+    }
+
+    bump.current_chunk_footer = new_footer
+    ptr := intrinsics.ptr_offset((^u8)(new_footer.ptr), -layout.size)
+    ptr = intrinsics.ptr_offset(ptr, -(uint(uintptr(ptr)) % uint(layout.align)))
+    new_footer.ptr = ptr
+
+    return ptr
 }

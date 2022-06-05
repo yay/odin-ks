@@ -10,12 +10,13 @@ import "core:sys/darwin"
 import "core:intrinsics"
 import "core:fmt"
 
-// import "bump"
+import "bump"
 // import "core:mem/virtual" // Growing_Arena is not implemented on Darwin yet
 
 Tree :: struct {
     left, right: ^Tree,
 }
+
 
 main :: proc() {
     depth := 10
@@ -28,10 +29,16 @@ main :: proc() {
     max_depth := max(min_depth + 2, depth)
 
     {
+        arena := bump.create()
+        defer bump.destroy(&arena)
         depth := max_depth + 1
-        tree := bottom_up_tree(depth)
+        tree := bottom_up_tree(&arena, depth)
         fmt.println("stretch tree of depth", depth, "\tcheck:", check(tree))
     }
+
+    long_lived_arena := bump.create()
+    defer bump.destroy(&long_lived_arena)
+    long_lived_tree := bottom_up_tree(&long_lived_arena, max_depth)
 
     results := make([dynamic]struct{depth, checksum: int}, (max_depth - min_depth) / 2 + 1)
     defer delete(results)
@@ -64,8 +71,7 @@ main :: proc() {
             "\t check:", res.checksum)
     }
 
-    tree := bottom_up_tree(max_depth)
-    fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(tree))
+    fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(long_lived_tree))
 }
 
 Work :: struct {
@@ -83,15 +89,16 @@ worker :: proc(t: thread.Task) {
     free(work)
 }
 
-bottom_up_tree :: proc(depth: int) -> ^Tree {
+bottom_up_tree :: proc(arena: ^bump.Bump, depth: int) -> ^Tree {
     // The default temp allocator is thread local.
     // Temp allocator is a ring buffer with a fixed size of only a few megabytes.
     // For example, to increase the size to 128MB compile with:
     // odin build . -o:speed -no-bounds-check -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=134217728
-    tree := new(Tree, context.temp_allocator)
+    // tree := new(Tree, context.temp_allocator)
+    tree := bump.alloc(arena, Tree{})
     if depth > 0 {
-        tree.right = bottom_up_tree(depth - 1)
-        tree.left = bottom_up_tree(depth - 1)
+        tree.right = bottom_up_tree(arena, depth - 1)
+        tree.left = bottom_up_tree(arena, depth - 1)
     }
     return tree
 }
@@ -106,9 +113,12 @@ check :: proc(tree: ^Tree) -> int {
 }
 
 inner :: proc(depth, iterations: int) -> int {
+    arena := bump.create()
+    defer bump.destroy(&arena)
+
     sum := 0
     for i in 0..<iterations {
-        tree := bottom_up_tree(depth)
+        tree := bottom_up_tree(&arena, depth)
         sum += check(tree)
     }
     return sum
