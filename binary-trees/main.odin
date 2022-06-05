@@ -87,7 +87,7 @@ bottom_up_tree :: proc(depth: int) -> ^Tree {
     // The default temp allocator is thread local.
     // Temp allocator is a ring buffer with a fixed size of only a few megabytes.
     // For example, to increase the size to 128MB compile with:
-    // odin build . -o:speed -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=134217728
+    // odin build . -o:speed -no-bounds-check -define:DEFAULT_TEMP_ALLOCATOR_BACKING_SIZE=134217728
     tree := new(Tree, context.temp_allocator)
     if depth > 0 {
         tree.right = bottom_up_tree(depth - 1)

@@ -24,7 +24,10 @@
             "group": {
                 "kind": "build",
                 "isDefault": true
-            }
+            },
+            "presentation": {
+                "clear": true
+            },
         },
         {
             "label": "Run",
@@ -33,6 +36,9 @@
             "dependsOn": [
                 "Debug Build"
             ],
+            "presentation": {
+                "clear": true
+            },
             "problemMatcher": []
         }
     ]
