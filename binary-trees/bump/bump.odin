@@ -51,13 +51,26 @@ ChunkFooter :: struct {
     ptr: rawptr,
 }
 
-EMPTY_CHUNK := ChunkFooter{
-    data = nil,
-    layout = Layout {
-        size = 0,
-        align = 1,
-    },
+EMPTY_CHUNK := create_empty_chunk()
+
+create_empty_chunk :: proc() -> ChunkFooter {
+    empty := ChunkFooter{
+        // This chunk is empty (except the foot itself).
+        layout = Layout {
+            size = size_of(ChunkFooter),
+            align = align_of(ChunkFooter),
+        },
+    }
+    // The start of the (empty) allocatable region for this chunk is itself.
+    empty.data = &empty
+    // The end of the (empty) allocatable region for this chunk is also itself.
+    empty.ptr = &empty
+    // Invariant: the last chunk footer in all `ChunkFooter.prev` linked lists
+    // is the empty chunk footer, whose `prev` points to itself.
+    empty.prev = &empty
+    return empty
 }
+// EMPTY_CHUNK.data = &EMPTY_CHUNK
 
 Bump :: struct {
     // The current chunk we are bump allocating within.

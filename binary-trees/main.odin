@@ -17,7 +17,6 @@ Tree :: struct {
     left, right: ^Tree,
 }
 
-
 main :: proc() {
     depth := 10
     if len(os.args) == 2 {
@@ -36,42 +35,42 @@ main :: proc() {
         fmt.println("stretch tree of depth", depth, "\tcheck:", check(tree))
     }
 
-    long_lived_arena := bump.create()
-    defer bump.destroy(&long_lived_arena)
-    long_lived_tree := bottom_up_tree(&long_lived_arena, max_depth)
+    // long_lived_arena := bump.create()
+    // defer bump.destroy(&long_lived_arena)
+    // long_lived_tree := bottom_up_tree(&long_lived_arena, max_depth)
 
-    results := make([dynamic]struct{depth, checksum: int}, (max_depth - min_depth) / 2 + 1)
-    defer delete(results)
+    // results := make([dynamic]struct{depth, checksum: int}, (max_depth - min_depth) / 2 + 1)
+    // defer delete(results)
 
-    for i in 0..<len(results) {
-        results[i].depth = i * 2 + min_depth
-    }
+    // for i in 0..<len(results) {
+    //     results[i].depth = i * 2 + min_depth
+    // }
 
-    pool: thread.Pool
-    thread.pool_init(&pool, context.allocator, get_darwin_ncpu())
-    defer thread.pool_destroy(&pool)
+    // pool: thread.Pool
+    // thread.pool_init(&pool, context.allocator, get_darwin_ncpu())
+    // defer thread.pool_destroy(&pool)
 
-    for i in 0..<len(results) {
-        depth := results[i].depth
-        iterations := 1 << uint(max_depth - depth + min_depth)
-        work := new_clone(Work{
-            depth = depth,
-            iterations = iterations,
-            result = &results[i],
-        })
-        thread.pool_add_task(&pool, context.allocator, worker, work, i)
-    }
+    // for i in 0..<len(results) {
+    //     depth := results[i].depth
+    //     iterations := 1 << uint(max_depth - depth + min_depth)
+    //     work := new_clone(Work{
+    //         depth = depth,
+    //         iterations = iterations,
+    //         result = &results[i],
+    //     })
+    //     thread.pool_add_task(&pool, context.allocator, worker, work, i)
+    // }
 
-    thread.pool_start(&pool)
-    thread.pool_finish(&pool)
+    // thread.pool_start(&pool)
+    // thread.pool_finish(&pool)
 
-    for res in results {
-        fmt.println(1 << uint(max_depth - res.depth + min_depth),
-            "\t trees of depth", res.depth,
-            "\t check:", res.checksum)
-    }
+    // for res in results {
+    //     fmt.println(1 << uint(max_depth - res.depth + min_depth),
+    //         "\t trees of depth", res.depth,
+    //         "\t check:", res.checksum)
+    // }
 
-    fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(long_lived_tree))
+    // fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(long_lived_tree))
 }
 
 Work :: struct {
