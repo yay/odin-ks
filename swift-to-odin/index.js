@@ -1,0 +1,128 @@
+const fs = require('fs');
+const { exec } = require("child_process");
+
+function run(command) {
+  exec(command, (err, stdout, stderr) => {
+    if (err) {
+      console.error(`exec error: ${err}`);
+      return;
+    }
+
+    stderr = stderr.trim();
+    if (stderr) {
+      console.log(`stderr: ${stderr}`);
+      return;
+    }
+
+    stdout = stdout.trim();
+    if (stdout) {
+      console.log(`stdout: ${stdout}`);
+    }
+  });
+}
+
+const getterRegEx = /^(.*)public var (.+): (.+) { get }(.*)$/;
+
+const code = String(fs.readFileSync('./generated.swift'));
+
+const generateSwift = false;
+const generateOdin = true;
+
+if (generateSwift) {
+  const lines = code.split('\n').map((line, i) => {
+    const arr = getterRegEx.exec(line);
+    if (arr) {
+      const [all, prefix, constant, type, suffix] = arr;
+      return `print("let ${constant}: ${type} = ", ${constant}, separator: "")`;
+    }
+    return `print("""\n${line}\n""")`;
+  });
+  lines.unshift('import Foundation');
+
+  fs.writeFileSync('./eval.swift', lines.join('\n'));
+
+  run('swift ./eval.swift > regenerated.swift');
+}
+
+if (generateOdin) {
+  swiftToOdinTypeMap = {
+    'Int': 'int',
+    'UInt': 'uint',
+    'Int8': 'i8',
+    'UInt8': 'u8',
+    'Int16': 'i16',
+    'UInt16': 'u16',
+    'Int32': 'i32',
+    'UInt32': 'u32',
+    'Int64': 'i64',
+    'UInt64': 'u64',
+    'Float': 'f32',
+    'Double': 'f64',
+
+    '__int8_t': 'i8',
+    '__uint8_t': 'u8',
+    '__int16_t': 'i16',
+    '__uint16_t': 'u16',
+    '__int32_t': 'i32',
+    '__uint32_t': 'u32',
+    '__int64_t': 'i64',
+    '__uint64_t': 'u64',
+    '__darwin_intptr_t': 'int',
+    '__darwin_natural_t': 'u32',
+    '__darwin_off_t': 'i64',
+    'off_t': 'i64',
+    '__darwin_mach_port_name_t': 'u32',
+    '__darwin_mach_port_t': 'u32',
+    '__darwin_mode_t': 'u16',
+    'mode_t': 'u16',
+    '__darwin_pid_t': 'i32',
+    '__darwin_sigset_t': 'u32',
+    '__darwin_suseconds_t': 'i32',
+    '__darwin_uid_t': 'u32',
+    '__darwin_useconds_t': 'u32',
+    '__darwin_uuid_t': '[16]byte',
+    '__darwin_uuid_string_t': '[37]byte',
+
+    'u_long': 'uint',
+    'ushort': 'u16',
+    'uint': 'u32',
+    'u_quad_t': 'u64',
+    'quad_t': 'i64',
+    'qaddr_t': '^i64',
+    'daddr_t': 'i32',
+
+    'fixpt_t': 'u32',
+    'segsz_t': 'i32',
+    'swblk_t': 'i32',
+    'fd_mask': 'i32',
+
+    'filesec_property_t': 'u32',
+    'filesec_t': 'rawptr',
+    'OpaquePointer': 'rawptr'
+  };
+  function rawPrint(str) {
+    return `print("""\n${str}\n""", separator: "", terminator: "")`;
+  }
+  function rawPrintln(str, terminator = '', separator = '') {
+    return `print("""\n${str}\n""", separator: "", terminator: "\\n")`;
+  }
+  const lines = code.split('\n').map((line, i) => {
+    const arr = getterRegEx.exec(line);
+    if (arr) {
+      const [all, prefix, constant, type, suffix] = arr;
+      const odinType = swiftToOdinTypeMap[type];
+      if (!odinType) {
+        console.error(`Unknown type: ${type}`);
+        process.exit(1);
+      }
+      return `${rawPrint(prefix)}\nprint("${constant} : ${odinType} : ", ${constant}, separator: "", terminator: "")\n${rawPrintln(suffix)}\n`;
+    }
+    return rawPrintln(line);
+  });
+  lines.unshift('print("package generated")');
+  lines.unshift('import Foundation');
+
+  fs.writeFileSync('./eval.swift', lines.join('\n'));
+
+  run('swift ./eval.swift > generated.odin');
+}
