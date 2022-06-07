@@ -3,6 +3,7 @@ package bump
 import "core:intrinsics"
 import "core:mem"
 import "core:math"
+import "core:fmt"
 
 // After this point, we try to hit page boundaries instead of powers of 2.
 PAGE_STRATEGY_CUTOFF :: 0x1000
@@ -38,6 +39,13 @@ Layout :: struct {
     align: int,
 }
 
+layout_from_type :: proc(T: typeid) -> Layout {
+    return Layout {
+        size = size_of(T),
+        align = align_of(T),
+    }
+}
+
 ChunkFooter :: struct {
     data: rawptr,
     layout: Layout,
@@ -54,12 +62,9 @@ ChunkFooter :: struct {
 EMPTY_CHUNK := create_empty_chunk()
 
 create_empty_chunk :: proc() -> ChunkFooter {
-    empty := ChunkFooter{
+    empty := ChunkFooter {
         // This chunk is empty (except the foot itself).
-        layout = Layout {
-            size = size_of(ChunkFooter),
-            align = align_of(ChunkFooter),
-        },
+        layout = layout_from_type(ChunkFooter),
     }
     // The start of the (empty) allocatable region for this chunk is itself.
     empty.data = &empty
@@ -68,6 +73,12 @@ create_empty_chunk :: proc() -> ChunkFooter {
     // Invariant: the last chunk footer in all `ChunkFooter.prev` linked lists
     // is the empty chunk footer, whose `prev` points to itself.
     empty.prev = &empty
+
+    fmt.println(empty.layout)
+    fmt.println(empty.data)
+    fmt.println(empty.ptr)
+    fmt.println(empty.prev)
+
     return empty
 }
 // EMPTY_CHUNK.data = &EMPTY_CHUNK
@@ -168,11 +179,8 @@ next_power_of_two :: proc(n: int) -> int {
     return (max(int) >> uint(z)) + 1
 }
 
-alloc :: proc(bump: ^Bump, val: $T) -> ^T {
-    layout := Layout {
-        size = size_of(T),
-        align = align_of(T),
-    }
+alloc :: proc(bump: ^Bump, val: $T) -> ^T { // alloc_with
+    layout := layout_from_type(T)
     p := (^T)(try_alloc_layout(bump, layout))
     if p == nil {
         return nil
@@ -192,6 +200,9 @@ try_alloc_layout :: proc(bump: ^Bump, layout: Layout) -> rawptr {
 try_alloc_layout_fast :: proc(bump: ^Bump, layout: Layout) -> rawptr {
     footer := bump.current_chunk_footer
     ptr := uint(uintptr(footer.ptr))
+    assert(footer.data <= footer.ptr)
+    fmt.println(footer.ptr <= footer, ptr, uint(uintptr(footer)), uint(layout.size))
+    assert(footer.ptr <= footer)
     if ptr < uint(layout.size) {
         return nil
     }
@@ -222,15 +233,12 @@ alloc_layout_slow :: proc(bump: ^Bump, layout: Layout) -> rawptr {
     base_size := max((footer.layout.size - FOOTER_SIZE) * 2, min_new_chunk_size)
 
     new_footer: ^ChunkFooter
-    for {
-        if base_size >= min_new_chunk_size {
-            if new_footer = new_chunk(base_size, layout, footer); new_footer != nil {
-                break
-            }
-            base_size /= 2
-        } else {
+    for base_size >= min_new_chunk_size {
+        new_footer = new_chunk(base_size, layout, footer)
+        if new_footer != nil {
             break
         }
+        base_size /= 2
     }
     if new_footer == nil {
         return nil
