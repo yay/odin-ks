@@ -34,7 +34,7 @@ function swiftRawPrintln(str) {
 
 const getterRegEx = /^(.*)public var (.+): (.+) { get }(.*)$/; // prefix, name, type, suffix
 const structsRegEx = /(.*?)public struct (.+?) {(.+?)}/smg; // prefix, name, body (note: doesn't capture suffix)
-const structFieldsRegEx = /public var (.+?): (.+?)(?:\n| (?:\/\*(.*?)\*\/))/g; // name, type, comment
+const structFieldsRegEx = /public var (.+?): (.+?)(?:\n| (?:\/\*(.*?)\*\/)| \/\/ (.*?)\n)/g; // name, type, comment
 
 const code = String(fs.readFileSync('./generated.swift'));
 
@@ -89,6 +89,7 @@ if (generateOdin) {
     '__darwin_mode_t': 'u16',
     'mode_t': 'u16',
     '__darwin_pid_t': 'i32',
+    'pid_t': 'i32',
     '__darwin_sigset_t': 'u32',
     '__darwin_suseconds_t': 'i32',
     '__darwin_uid_t': 'u32',
@@ -111,26 +112,40 @@ if (generateOdin) {
 
     'filesec_property_t': 'u32',
     'filesec_t': 'rawptr',
-    'OpaquePointer': 'rawptr'
+    'OpaquePointer': 'rawptr',
+    'UnsafeMutableRawPointer!': 'rawptr'
   };
 
   // JavaScript RegExp objects are stateful when they have the global or sticky flags set
   // (e.g. /foo/g or /foo/y). They store a lastIndex from the previous match.
   // Using this internally, exec() can be used to iterate over multiple matches
   // in a string of text (with capture groups).
-  let structMatch;
-  while (structMatch = structsRegEx.exec(code)) {
-    const [, prefix, name, body] = structMatch;
-    let fields = [];
-    let fieldMatch;
-    while (fieldMatch = structFieldsRegEx.exec(body)) {
-      const [name, type, comment] = fieldMatch;
-      fields.push({ name, type, comment });
+  {
+    const lines = [];
+    const structNames = new Set();
+    let structMatch;
+    while (structMatch = structsRegEx.exec(code)) {
+      const [, structPrefix, structName, structBody] = structMatch;
+      structNames.add(structName);
+      lines.push(structPrefix);
+      let fields = [];
+      let fieldMatch;
+      lines.push(`${ structName } :: struct {`);
+      while (fieldMatch = structFieldsRegEx.exec(structBody)) {
+        const [, fieldName, fieldType, fieldComment] = fieldMatch;
+        const trimmedComment = fieldComment?.trim();
+        const odinType = swiftToOdinTypeMap[fieldType] || (structNames.has(fieldType) ? fieldType : `${fieldType}!!!`);
+        lines.push(`    ${ fieldName }: ${ odinType }, ${ trimmedComment? ` // ${trimmedComment}` : ''}`);
+        // fields.push({ name, type, comment });
+      }
+      lines.push(`}`);
+      // console.log(JSON.stringify(fields, null, 4));
     }
-    console.log(JSON.stringify(fields, null, 4));
+    const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
+    lines.push(remainder);
+    fs.writeFileSync('./test.txt', lines.join('\n'));
   }
-
-  const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
+  process.exit(0);
 
   const lines = code.split('\n').map((line, i) => {
     const arr = getterRegEx.exec(line);
