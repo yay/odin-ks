@@ -1,6 +1,9 @@
 const fs = require('fs');
 const { exec } = require("child_process");
 
+// The order of the struct elements in memory is the order of their declaration:
+// https://github.com/apple/swift/blob/main/docs/ABI/TypeLayout.rst
+
 function run(command) {
   exec(command, (err, stdout, stderr) => {
     if (err) {
@@ -21,7 +24,17 @@ function run(command) {
   });
 }
 
-const getterRegEx = /^(.*)public var (.+): (.+) { get }(.*)$/;
+function swiftRawPrint(str) {
+  return `print("""\n${str}\n""", terminator: "")`;
+}
+
+function swiftRawPrintln(str) {
+  return `print("""\n${str}\n""", terminator: "\\n")`;
+}
+
+const getterRegEx = /^(.*)public var (.+): (.+) { get }(.*)$/; // prefix, name, type, suffix
+const structsRegEx = /(.*?)public struct (.+?) {(.+?)}/smg; // prefix, name, body (note: doesn't capture suffix)
+const structFieldsRegEx = /public var (.+): (.+)(?:\n| (?:\/\*(.*)\*\/))/g; // name, type, comment
 
 const code = String(fs.readFileSync('./generated.swift'));
 
@@ -100,12 +113,19 @@ if (generateOdin) {
     'filesec_t': 'rawptr',
     'OpaquePointer': 'rawptr'
   };
-  function rawPrint(str) {
-    return `print("""\n${str}\n""", separator: "", terminator: "")`;
-  }
-  function rawPrintln(str, terminator = '', separator = '') {
-    return `print("""\n${str}\n""", separator: "", terminator: "\\n")`;
-  }
+
+  // JavaScript RegExp objects are stateful when they have the global or sticky flags set
+  // (e.g. /foo/g or /foo/y). They store a lastIndex from the previous match.
+  // Using this internally, exec() can be used to iterate over multiple matches
+  // in a string of text (with capture groups).
+  let arr;
+  do {
+    arr = structsRegEx.exec(code);
+    console.log(arr);
+  } while (arr);
+
+  const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
+
   const lines = code.split('\n').map((line, i) => {
     const arr = getterRegEx.exec(line);
     if (arr) {
