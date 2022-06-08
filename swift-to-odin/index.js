@@ -34,7 +34,7 @@ function swiftRawPrintln(str) {
 
 const getterRegEx = /^(.*)public var (.+): (.+) { get }(.*)$/; // prefix, name, type, suffix
 const structsRegEx = /(.*?)public struct (.+?) {(.+?)}/smg; // prefix, name, body (note: doesn't capture suffix)
-const structFieldsRegEx = /public var (.+): (.+)(?:\n| (?:\/\*(.*)\*\/))/g; // name, type, comment
+const structFieldsRegEx = /public var (.+?): (.+?)(?:\n| (?:\/\*(.*?)\*\/))/g; // name, type, comment
 
 const code = String(fs.readFileSync('./generated.swift'));
 
@@ -118,10 +118,17 @@ if (generateOdin) {
   // (e.g. /foo/g or /foo/y). They store a lastIndex from the previous match.
   // Using this internally, exec() can be used to iterate over multiple matches
   // in a string of text (with capture groups).
-  let arr;
-  do {
-    arr = structsRegEx.exec(code);
-  } while (arr);
+  let structMatch;
+  while (structMatch = structsRegEx.exec(code)) {
+    const [, prefix, name, body] = structMatch;
+    let fields = [];
+    let fieldMatch;
+    while (fieldMatch = structFieldsRegEx.exec(body)) {
+      const [name, type, comment] = fieldMatch;
+      fields.push({ name, type, comment });
+    }
+    console.log(JSON.stringify(fields, null, 4));
+  }
 
   const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
 
