@@ -96,6 +96,7 @@ if (generateOdin) {
     '__darwin_useconds_t': 'u32',
     '__darwin_uuid_t': '[16]byte',
     '__darwin_uuid_string_t': '[37]byte',
+    '__darwin_time_t': 'int',
 
     'u_long': 'uint',
     'ushort': 'u16',
@@ -113,52 +114,53 @@ if (generateOdin) {
     'filesec_property_t': 'u32',
     'filesec_t': 'rawptr',
     'OpaquePointer': 'rawptr',
-    'UnsafeMutableRawPointer!': 'rawptr'
+    'UnsafeMutableRawPointer!': 'rawptr',
+    'UnsafePointer<CChar>': 'cstring'
   };
 
   // JavaScript RegExp objects are stateful when they have the global or sticky flags set
   // (e.g. /foo/g or /foo/y). They store a lastIndex from the previous match.
   // Using this internally, exec() can be used to iterate over multiple matches
   // in a string of text (with capture groups).
-  {
-    const lines = [];
-    const structNames = new Set();
-    let structMatch;
-    while (structMatch = structsRegEx.exec(code)) {
-      const [, structPrefix, structName, structBody] = structMatch;
-      structNames.add(structName);
-      lines.push(structPrefix);
-      let fieldMatch;
-      lines.push(`${ structName } :: struct {`);
-      while (fieldMatch = structFieldsRegEx.exec(structBody)) {
-        const [, fieldName, fieldType, fieldComment] = fieldMatch;
-        const trimmedComment = fieldComment?.trim();
-        const odinType = swiftToOdinTypeMap[fieldType] || (structNames.has(fieldType) ? fieldType : `${fieldType}!!!`);
-        // Search for `!!!` in the output to see if there are any errors.
-        lines.push(`    ${ fieldName }: ${ odinType }, ${ trimmedComment? ` // ${trimmedComment}` : ''}`);
-      }
-      lines.push(`}`);
+  const lines = [];
+  const structNames = new Set();
+  let structMatch;
+  while (structMatch = structsRegEx.exec(code)) {
+    const [, structPrefix, structName, structBody] = structMatch;
+    structNames.add(structName);
+    lines.push(mapConstants(structPrefix));
+    let fieldMatch;
+    lines.push(swiftRawPrintln(`${structName} :: struct {`));
+    while (fieldMatch = structFieldsRegEx.exec(structBody)) {
+      const [, fieldName, fieldType, fieldComment] = fieldMatch;
+      const trimmedComment = fieldComment?.trim();
+      const odinType = swiftToOdinTypeMap[fieldType] || (structNames.has(fieldType) ? fieldType : `${fieldType}!!!`);
+      // Search for `!!!` in the output to see if there are any errors.
+      lines.push(swiftRawPrintln(`    ${fieldName}: ${odinType}, ${trimmedComment ? ` // ${trimmedComment}` : ''}`));
     }
-    const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
-    lines.push(remainder);
-    fs.writeFileSync('./test.txt', lines.join('\n'));
+    lines.push(swiftRawPrintln('}'));
   }
-  process.exit(0);
+  const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
+  lines.push(mapConstants(remainder));
 
-  const lines = code.split('\n').map((line, i) => {
-    const arr = getterRegEx.exec(line);
-    if (arr) {
-      const [all, prefix, constant, type, suffix] = arr;
-      const odinType = swiftToOdinTypeMap[type];
-      if (!odinType) {
-        console.error(`Unknown type: ${type}`);
-        process.exit(1);
+  function mapConstants(code) {
+    const lines = code.split('\n').map((line, i) => {
+      const arr = getterRegEx.exec(line);
+      if (arr) {
+        const [all, prefix, constant, type, suffix] = arr;
+        const odinType = swiftToOdinTypeMap[type];
+        if (!odinType) {
+          console.error(`Unknown type: ${type}`);
+          process.exit(1);
+        }
+        return `${swiftRawPrint(prefix)}\nprint("${constant} : ${odinType} : ", ${constant}, separator: "", terminator: "")\n${swiftRawPrintln(suffix)}\n`;
       }
-      return `${swiftRawPrint(prefix)}\nprint("${constant} : ${odinType} : ", ${constant}, separator: "", terminator: "")\n${swiftRawPrintln(suffix)}\n`;
-    }
-    return swiftRawPrintln(line);
-  });
-  lines.unshift('print("package generated")');
+      return swiftRawPrintln(line);
+    });
+    return lines.join('\n');
+  }
+
+  lines.unshift('print("package darwin")');
   lines.unshift('import Foundation');
 
   fs.writeFileSync('./eval.swift', lines.join('\n'));
