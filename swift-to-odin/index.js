@@ -29,7 +29,7 @@ function swiftRawPrint(str) {
 }
 
 function swiftRawPrintln(str) {
-  return `print("""\n${str}\n""", terminator: "\\n")`;
+  return `print("""\n${str}\n""")`;
 }
 
 const getterRegEx = /^(.*)public var (.+): (.+) { get }(.*)$/; // prefix, name, type, suffix
@@ -48,7 +48,7 @@ if (generateSwift) {
       const [all, prefix, constant, type, suffix] = arr;
       return `print("let ${constant}: ${type} = ", ${constant}, separator: "")`;
     }
-    return `print("""\n${line}\n""")`;
+    return swiftRawPrintln(line);
   });
   lines.unshift('import Foundation');
 
@@ -121,7 +121,6 @@ if (generateOdin) {
   let arr;
   do {
     arr = structsRegEx.exec(code);
-    console.log(arr);
   } while (arr);
 
   const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
@@ -135,9 +134,9 @@ if (generateOdin) {
         console.error(`Unknown type: ${type}`);
         process.exit(1);
       }
-      return `${rawPrint(prefix)}\nprint("${constant} : ${odinType} : ", ${constant}, separator: "", terminator: "")\n${rawPrintln(suffix)}\n`;
+      return `${swiftRawPrint(prefix)}\nprint("${constant} : ${odinType} : ", ${constant}, separator: "", terminator: "")\n${swiftRawPrintln(suffix)}\n`;
     }
-    return rawPrintln(line);
+    return swiftRawPrintln(line);
   });
   lines.unshift('print("package generated")');
   lines.unshift('import Foundation');
