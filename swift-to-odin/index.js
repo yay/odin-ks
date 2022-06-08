@@ -128,18 +128,16 @@ if (generateOdin) {
       const [, structPrefix, structName, structBody] = structMatch;
       structNames.add(structName);
       lines.push(structPrefix);
-      let fields = [];
       let fieldMatch;
       lines.push(`${ structName } :: struct {`);
       while (fieldMatch = structFieldsRegEx.exec(structBody)) {
         const [, fieldName, fieldType, fieldComment] = fieldMatch;
         const trimmedComment = fieldComment?.trim();
         const odinType = swiftToOdinTypeMap[fieldType] || (structNames.has(fieldType) ? fieldType : `${fieldType}!!!`);
+        // Search for `!!!` in the output to see if there are any errors.
         lines.push(`    ${ fieldName }: ${ odinType }, ${ trimmedComment? ` // ${trimmedComment}` : ''}`);
-        // fields.push({ name, type, comment });
       }
       lines.push(`}`);
-      // console.log(JSON.stringify(fields, null, 4));
     }
     const remainder = code.replace(structsRegEx, ''); // the rest of the code after all the matched structs
     lines.push(remainder);
