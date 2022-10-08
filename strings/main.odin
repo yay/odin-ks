@@ -6,7 +6,9 @@ import "core:strings"
 // odin build . -o:speed -no-bounds-check -disable-assert
 
 main :: proc() {
-    character_based_strings()
+    // character_based_strings()
+    // string_builder_test()
+    // concat_strings_buf()
 }
 
 character_based_strings :: proc() {
@@ -29,31 +31,41 @@ concat_strings :: proc() {
 }
 
 concat_strings_buf :: proc() {
-    buf := make([dynamic]u8)
+    buf := make([dynamic]byte)
     defer delete(buf)
 
     hello := "Hello"
     append(&buf, hello)
 
     world := "World!"
-    for i in 0..1_000_000_000 {
+    for i in 0..=1_000_000_000 {
         append(&buf, world)
     }
     s := string(buf[:])
-    fmt.printf("%c %c %c {}\n", s[0], s[3_000_000_000], s[6_000_000_000], len(s))
+    fmt.printf("%c %c %c {}\n",
+        s[0],
+        s[3_000_000_000],
+        s[6_000_000_000],
+        len(s))
 }
 
 string_builder_test :: proc() {
     using strings
-    b := make_builder()
-    defer destroy_builder(&b)
-    grow_builder(&b, 6000000011)
+    b := builder_make()
+    defer builder_destroy(&b)
+    // builder_grow(&b, 6000000011)
     write_string(&b, "Hello")
     name := "World!"
-    for i in 0..1_000_000_000 {
+    for i in 0..=1_000_000_000 {
         write_string(&b, name)
     }
-    fmt.println(builder_len(b))
+    s := to_string(b)
+    // fmt.println(builder_len(b))
+    fmt.printf("%c %c %c {}\n",
+        s[0],
+        s[3_000_000_000],
+        s[6_000_000_000],
+        len(s))
 }
 
 cheating_strings_test :: proc() {
@@ -69,7 +81,7 @@ cheating_strings_test :: proc() {
     world: [8]u8 = { 'W', 'o', 'r', 'l', 'd', '!', 0, 0 }
     optimized_world: u64 = transmute(u64)(world)
 
-    for i in 0..1_000_000_000 {
+    for i in 0..=1_000_000_000 {
         offset := len("Hello") + i * len("World!")
         buf_ptr := (^u64)(&buf[offset])
         buf_ptr^ = optimized_world
