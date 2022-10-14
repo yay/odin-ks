@@ -28,24 +28,26 @@ main :: proc() {
     max_depth := max(min_depth + 2, depth)
 
     {
-        arena: virtual.Growing_Arena
-        allocator := virtual.growing_arena_allocator(&arena)
-        defer virtual.growing_arena_destroy(&arena)
+        arena: virtual.Arena
+        allocator := virtual.arena_allocator(&arena)
+        defer virtual.arena_free_all(&arena)
 
         depth := max_depth + 1
         tree := bottom_up_tree(allocator, depth)
         fmt.println("stretch tree of depth", depth, "\tcheck:", check(tree))
     }
 
-    long_lived_arena: virtual.Growing_Arena
-    allocator := virtual.growing_arena_allocator(&long_lived_arena)
-    defer virtual.growing_arena_destroy(&long_lived_arena)
+    long_lived_arena: virtual.Arena
+    allocator := virtual.arena_allocator(&long_lived_arena)
+    defer virtual.arena_free_all(&long_lived_arena)
     long_lived_tree := bottom_up_tree(allocator, max_depth)
 
-    results := make([dynamic]struct{depth, checksum: int}, (max_depth - min_depth) / 2 + 1)
+    results := make([dynamic]struct {
+            depth, checksum: int,
+        }, (max_depth - min_depth) / 2 + 1)
     defer delete(results)
 
-    for i in 0..<len(results) {
+    for i in 0 ..< len(results) {
         results[i].depth = i * 2 + min_depth
     }
 
@@ -53,14 +55,10 @@ main :: proc() {
     thread.pool_init(&pool, context.allocator, get_darwin_ncpu())
     defer thread.pool_destroy(&pool)
 
-    for i in 0..<len(results) {
+    for i in 0 ..< len(results) {
         depth := results[i].depth
         iterations := 1 << uint(max_depth - depth + min_depth)
-        work := new_clone(Work{
-            depth = depth,
-            iterations = iterations,
-            result = &results[i],
-        })
+        work := new_clone(Work{depth = depth, iterations = iterations, result = &results[i]})
         thread.pool_add_task(&pool, context.allocator, worker, work, i)
     }
 
@@ -68,9 +66,13 @@ main :: proc() {
     thread.pool_finish(&pool)
 
     for res in results {
-        fmt.println(1 << uint(max_depth - res.depth + min_depth),
-            "\t trees of depth", res.depth,
-            "\t check:", res.checksum)
+        fmt.println(
+            int(1) << uint(max_depth - res.depth + min_depth),
+            "\t trees of depth",
+            res.depth,
+            "\t check:",
+            res.checksum,
+        )
     }
 
     fmt.println("long lived tree of depth", max_depth, "\tcheck:", check(long_lived_tree))
@@ -78,13 +80,15 @@ main :: proc() {
 
 Work :: struct {
     depth, iterations: int,
-    result: ^struct{depth, checksum: int},
+    result:            ^struct {
+        depth, checksum: int,
+    },
 }
 
 worker :: proc(t: thread.Task) {
-    arena: virtual.Growing_Arena
-    allocator := virtual.growing_arena_allocator(&arena)
-    defer virtual.growing_arena_destroy(&arena)
+    arena: virtual.Arena
+    allocator := virtual.arena_allocator(&arena)
+    defer virtual.arena_free_all(&arena)
 
     work := (^Work)(t.data)
 
@@ -120,30 +124,30 @@ check :: proc(tree: ^Tree) -> int {
 
 inner :: proc(allocator: runtime.Allocator, depth, iterations: int) -> int {
     sum := 0
-    for i in 0..<iterations {
+    for i in 0 ..< iterations {
         tree := bottom_up_tree(allocator, depth)
         sum += check(tree)
     }
     return sum
 }
 
-CTL_HW :: 6  // generic cpu/io
+CTL_HW :: 6 // generic cpu/io
 HW_NCPU :: 3 // number of cpus
 
 get_darwin_ncpu :: proc() -> int {
     mib := [2]i32{CTL_HW, HW_NCPU}
-	out := u32(0)
-	nout := i64(size_of(out))
-	ret := darwin.syscall_sysctl(&mib[0], 2, &out, &nout, nil, 0)
-	if ret >= 0 && int(out) > 0 {
-		return int(out)
-	}
-	return 1
+    out := u32(0)
+    nout := i64(size_of(out))
+    ret := darwin.syscall_sysctl(&mib[0], 2, &out, &nout, nil, 0)
+    if ret >= 0 && int(out) > 0 {
+        return int(out)
+    }
+    return 1
 }
 
 print_mutex := b64(false)
-thread_print :: proc(args: ..any) { // allow one thread to print at a time
-    for !did_acquire(&print_mutex) { thread.yield() }
+thread_print :: proc(args: ..any) {     // allow one thread to print at a time
+    for !did_acquire(&print_mutex) {thread.yield()}
     fmt.println(..args)
     print_mutex = false
 }
