@@ -2,16 +2,14 @@ package main
 
 // https://benchmarksgame-team.pages.debian.net/benchmarksgame/program/binarytrees-rust-5.html
 
-import "core:os"
-import "core:strconv"
-import "core:mem"
-import "core:thread"
-import "core:runtime"
-import "core:sys/darwin"
-import "core:intrinsics"
 import "core:fmt"
-
+import "core:intrinsics"
+import "core:mem"
 import "core:mem/virtual"
+import "core:os"
+import "core:runtime"
+import "core:strconv"
+import "core:thread"
 
 Tree :: struct {
     left, right: ^Tree,
@@ -52,7 +50,7 @@ main :: proc() {
     }
 
     pool: thread.Pool
-    thread.pool_init(&pool, context.allocator, get_darwin_ncpu())
+    thread.pool_init(&pool, context.allocator, processor_core_count())
     defer thread.pool_destroy(&pool)
 
     for i in 0 ..< len(results) {
@@ -117,9 +115,8 @@ check :: proc(tree: ^Tree) -> int {
     using tree
     if left != nil && right != nil {
         return 1 + check(right) + check(left)
-    } else {
-        return 1
     }
+    return 1
 }
 
 inner :: proc(allocator: runtime.Allocator, depth, iterations: int) -> int {
@@ -129,20 +126,6 @@ inner :: proc(allocator: runtime.Allocator, depth, iterations: int) -> int {
         sum += check(tree)
     }
     return sum
-}
-
-CTL_HW :: 6 // generic cpu/io
-HW_NCPU :: 3 // number of cpus
-
-get_darwin_ncpu :: proc() -> int {
-    mib := [2]i32{CTL_HW, HW_NCPU}
-    out := u32(0)
-    nout := i64(size_of(out))
-    ret := darwin.syscall_sysctl(&mib[0], 2, &out, &nout, nil, 0)
-    if ret >= 0 && int(out) > 0 {
-        return int(out)
-    }
-    return 1
 }
 
 print_mutex := b64(false)
