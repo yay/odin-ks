@@ -8,7 +8,7 @@ import "core:strings"
 main :: proc() {
     // character_based_strings()
     // string_builder_test()
-    // concat_strings_buf()
+    concat_strings_buf()
 }
 
 character_based_strings :: proc() {
@@ -16,8 +16,8 @@ character_based_strings :: proc() {
     fmt.println("`phrase` length:", len(phrase)) // UTF-8
 
     #unroll for r, i in "日本語は話せません" {
-		fmt.println(r, i)
-	}
+        fmt.println(r, i)
+    }
 }
 
 concat_strings :: proc() {
@@ -30,6 +30,7 @@ concat_strings :: proc() {
     fmt.print(s)
 }
 
+// Takes 4.87s on Intel 12900H.
 concat_strings_buf :: proc() {
     buf := make([dynamic]byte)
     defer delete(buf)
@@ -38,15 +39,11 @@ concat_strings_buf :: proc() {
     append(&buf, hello)
 
     world := "World!"
-    for i in 0..=1_000_000_000 {
+    for i in 0 ..= 1_000_000_000 {
         append(&buf, world)
     }
     s := string(buf[:])
-    fmt.printf("%c %c %c {}\n",
-        s[0],
-        s[3_000_000_000],
-        s[6_000_000_000],
-        len(s))
+    fmt.printf("%c %c %c {}\n", s[0], s[3_000_000_000], s[6_000_000_000], len(s))
 }
 
 string_builder_test :: proc() {
@@ -56,16 +53,12 @@ string_builder_test :: proc() {
     // builder_grow(&b, 6000000011)
     write_string(&b, "Hello")
     name := "World!"
-    for i in 0..=1_000_000_000 {
+    for i in 0 ..= 1_000_000_000 {
         write_string(&b, name)
     }
     s := to_string(b)
     // fmt.println(builder_len(b))
-    fmt.printf("%c %c %c {}\n",
-        s[0],
-        s[3_000_000_000],
-        s[6_000_000_000],
-        len(s))
+    fmt.printf("%c %c %c {}\n", s[0], s[3_000_000_000], s[6_000_000_000], len(s))
 }
 
 cheating_strings_test :: proc() {
@@ -78,10 +71,10 @@ cheating_strings_test :: proc() {
     buf[3] = 'l'
     buf[4] = 'o'
 
-    world: [8]u8 = { 'W', 'o', 'r', 'l', 'd', '!', 0, 0 }
+    world: [8]u8 = {'W', 'o', 'r', 'l', 'd', '!', 0, 0}
     optimized_world: u64 = transmute(u64)(world)
 
-    for i in 0..=1_000_000_000 {
+    for i in 0 ..= 1_000_000_000 {
         offset := len("Hello") + i * len("World!")
         buf_ptr := (^u64)(&buf[offset])
         buf_ptr^ = optimized_world
