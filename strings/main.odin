@@ -1,5 +1,6 @@
 package main
 
+import "../mem_leaks"
 import "base:runtime"
 import "core:c/libc"
 import "core:fmt"
@@ -10,7 +11,7 @@ import "core:strings"
 // odin build . -o:speed -no-bounds-check -disable-assert
 
 main :: proc() {
-	track_allocations(run)
+	mem_leaks.track(run)
 }
 
 run :: proc() {
@@ -242,18 +243,4 @@ benchmark_cheating_strings :: proc() {
 
 log_str :: proc(s: ^string) {
 	fmt.printf("%c %c %c {}\n", s[0], s[3_000_000_000], s[6_000_000_000], len(s))
-}
-
-track_allocations :: proc(code: proc()) {
-	tracking_allocator: mem.Tracking_Allocator
-	mem.tracking_allocator_init(&tracking_allocator, context.allocator)
-	context.allocator = mem.tracking_allocator(&tracking_allocator)
-
-	code()
-
-	for key, value in tracking_allocator.allocation_map {
-		fmt.printf("%v: Leaked %v bytes\n", value.location, value.size)
-	}
-
-	mem.tracking_allocator_destroy(&tracking_allocator)
 }

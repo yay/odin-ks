@@ -1,5 +1,6 @@
 package main
 
+import "../mem_leaks"
 import "core:fmt"
 import "core:mem"
 
@@ -9,7 +10,7 @@ Node :: struct($T: typeid) {
 }
 
 main :: proc() {
-	track_allocations(run)
+	mem_leaks.track(run)
 }
 
 run :: proc() {
@@ -95,28 +96,4 @@ free_after_use :: proc() {
 
 	free(node_ptr)
 	// fmt.println(node_ptr) // address sanitizer detects use after free
-}
-
-track_allocations :: proc(code: proc()) {
-	track: mem.Tracking_Allocator
-	mem.tracking_allocator_init(&track, context.allocator)
-	context.allocator = mem.tracking_allocator(&track)
-
-	defer {
-		if len(track.allocation_map) > 0 {
-			fmt.eprintf("=== %v allocations not freed: ===\n", len(track.allocation_map))
-			for _, entry in track.allocation_map {
-				fmt.eprintf("- %v bytes @ %v\n", entry.size, entry.location)
-			}
-		}
-		if len(track.bad_free_array) > 0 {
-			fmt.eprintf("=== %v incorrect frees: ===\n", len(track.bad_free_array))
-			for entry in track.bad_free_array {
-				fmt.eprintf("- %p @ %v\n", entry.memory, entry.location)
-			}
-		}
-		mem.tracking_allocator_destroy(&track)
-	}
-
-	code()
 }
