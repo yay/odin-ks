@@ -7,6 +7,9 @@
             "label": "Debug Build",
             "type": "shell",
             "command": "cd ${workspaceFolder}/${relativeFileDirname} && odin build . -debug -out:${workspaceFolder}/${relativeFileDirname}/${relativeFileDirname}.bin",
+            "windows": {
+                "command": "cd ${workspaceFolder}\\${relativeFileDirname}; odin build . -debug -out:${workspaceFolder}\\${relativeFileDirname}\\${relativeFileDirname}.bin",
+            },
             "problemMatcher": {
                 "owner": "odin",
                 "fileLocation": [

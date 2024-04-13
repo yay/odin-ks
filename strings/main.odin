@@ -15,8 +15,18 @@ main :: proc() {
 
 run :: proc() {
 	// slice_and_string_internals()
-	string_example()
+	// string_example()
 	// run_benchmarks()
+	slice_memory()
+}
+
+slice_memory :: proc() {
+	result, err := strings.concatenate({"123", "456", "789"})
+	// defer delete(result) // would leak 9 bytes without this statement
+
+	sub_str := result[3:6] // points to a section of the original slice
+	fmt.println("sub_str", sub_str)
+	delete(sub_str) // no effect, still would leak 9 bytes, if `result` is not deleted
 }
 
 run_benchmarks :: proc() {
