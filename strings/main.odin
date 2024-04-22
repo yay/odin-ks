@@ -16,9 +16,9 @@ main :: proc() {
 
 run :: proc() {
 	// slice_and_string_internals()
-	// string_example()
+	string_example()
 	// run_benchmarks()
-	slice_memory()
+	// slice_memory()
 }
 
 slice_memory :: proc() {
