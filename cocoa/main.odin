@@ -2,6 +2,7 @@ package main
 
 import "../mem_leaks"
 import "base:runtime"
+import "base:intrinsics"
 import "core:fmt"
 import "core:math"
 import CF "core:sys/darwin/CoreFoundation"
@@ -64,15 +65,9 @@ run :: proc() {
 	// https://developer.apple.com/documentation/appkit/nsapplication?language=objc
 	// https://developer.apple.com/documentation/appkit/nsapplication/1428360-shared
 	app := NS.Application.sharedApplication()
-	{
-		// The application is an ordinary app that appears in the Dock and may have a user interface.
-		// https://developer.apple.com/documentation/appkit/nsapplication/activationpolicy
-		ok := app->setActivationPolicy(.Regular)
-		if (!ok) {
-			fmt.println("Failed changing activation policy.")
-			return
-		}
-	}
+	// The application is an ordinary app that appears in the Dock and may have a user interface.
+	// https://developer.apple.com/documentation/appkit/nsapplication/activationpolicy
+	if (!app->setActivationPolicy(.Regular)) do return
 
 	app_delegate := NS.application_delegate_register_and_alloc({
 		applicationShouldTerminateAfterLastWindowClosed = proc(
@@ -81,13 +76,11 @@ run :: proc() {
 		applicationShouldTerminate = proc(
 			_: ^NS.Application,
 		) -> NS.ApplicationTerminateReply { return .TerminateNow },
-	}, "TestAppDelegate", context)
+	}, "AppDelegate", context)
 
 	app->setDelegate(app_delegate)
 
-	app_menu := NS.Menu.alloc()->init()
-	// menu := NS.Menu.alloc()->init()
-	NS.MenuItem.alloc()->init()
+	create_main_menu(app)
 
 	screen_rect := get_main_screen_rect()
 
@@ -108,13 +101,32 @@ run :: proc() {
 		// until it's moved onscreen.
 		false,
 	)
-	window_title := NS.String.alloc()->initWithOdinString("Cocoa window 😛")
-	window->setTitle(window_title)
+	window->setTitle(ns_str("NSWindow"))
 	window->makeKeyAndOrderFront(nil)
 
 	app->activate()
 
 	app->run()
+}
+
+ns_str :: proc(str: string) -> ^NS.String {
+	return NS.String.alloc()->initWithOdinString(str)
+}
+
+create_main_menu :: proc(app: ^NS.Application) {
+	main_menu := NS.Menu.alloc()->init()
+	main_menu_app_item := main_menu->addItemWithTitle(ns_str(""), nil, ns_str(""))
+	main_menu_edit_item := main_menu->addItemWithTitle(ns_str("Edit"), nil, ns_str(""))
+
+	app_menu := NS.Menu.alloc()->init()
+	app_menu->addItemWithTitle(ns_str("Quit"), intrinsics.objc_find_selector("terminate:"), ns_str("q"))
+
+	edit_menu := NS.Menu.alloc()->init()
+
+	main_menu_app_item->setSubmenu(app_menu)
+	main_menu_edit_item->setSubmenu(edit_menu)
+
+	app->setMainMenu(main_menu)
 }
 
 get_main_screen_rect :: proc() -> NS.Rect {
