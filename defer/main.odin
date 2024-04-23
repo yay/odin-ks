@@ -4,7 +4,7 @@ import "core:fmt"
 
 MyStruct :: struct {
     fred: int,
-    func: proc(s: ^MyStruct) -> int
+    func: proc(s: ^MyStruct) -> int,
 }
 
 func :: proc(this: ^MyStruct) -> int {
@@ -14,7 +14,7 @@ func :: proc(this: ^MyStruct) -> int {
 main :: proc() {
     myStruct : MyStruct = {
         fred = 1,
-        func = func
+        func = func,
     }
     myStruct.func(&myStruct)
 
