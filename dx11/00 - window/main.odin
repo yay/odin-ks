@@ -58,6 +58,14 @@ run :: proc() {
 		return
 	}
 
+	dark_mode: BOOL = TRUE
+	DwmSetWindowAttribute(
+		window_handle,
+		u32(DWMWINDOWATTRIBUTE.DWMWA_USE_IMMERSIVE_DARK_MODE),
+		&dark_mode,
+		size_of(dark_mode),
+	)
+
 	is_running := true
 
 	for is_running {
