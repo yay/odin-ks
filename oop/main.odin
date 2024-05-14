@@ -9,6 +9,25 @@ main :: proc() {
 	vtables()
 }
 
+// --------------------------------------------------------
+
+Base :: struct {
+	greeting: string,
+}
+
+Derived :: struct {
+	using base: Base,
+	name:       string,
+}
+
+DerivedByPtr :: struct {
+	// `using` can be applied anywhere and even to a pointer.
+	// This allows for a huge amount of control over the memory
+	// layout of the data structure.
+	using base: ^Base,
+	name:       string,
+}
+
 derived :: proc() {
 	base: Base
 	derived: Derived
@@ -33,6 +52,45 @@ derived :: proc() {
 	fmt.println(derivedByPtr)
 }
 
+// --------------------------------------------------------
+
+// In this case the struct itself contains pointers to "method" names (rather unnecessarily).
+Cat :: struct {
+	name: string,
+	x:    int,
+	y:    int,
+	meow: proc(cat: ^Cat),
+	move: proc(cat: ^Cat, x, y: int),
+}
+
+meow :: proc(cat: ^Cat) {
+	fmt.println(cat.name, "-", "meow")
+}
+
+move :: proc(cat: ^Cat, x, y: int) {
+	cat.x += x
+	cat.y += y
+	fmt.println(cat.name, "-", "position:", cat.x, cat.y)
+}
+
+newCat :: proc(name: string) -> ^Cat {
+	cat := new(Cat)
+	cat.name = name
+	cat.x = 0
+	cat.y = 0
+	cat.meow = meow
+	cat.move = move
+	return cat
+}
+
+newRudeCat :: proc(name: string) -> ^Cat {
+	cat := newCat(name)
+	cat.meow = proc(cat: ^Cat) {
+		fmt.println(cat.name, "-", "hsssss!")
+	}
+	return cat
+}
+
 cats :: proc() {
 	tom := newCat("Tom")
 	defer free(tom)
@@ -48,6 +106,8 @@ cats :: proc() {
 	defer free(rudeTom)
 	rudeTom->meow()
 }
+
+// --------------------------------------------------------
 
 Redactable :: struct {
 	redact: proc(l: ^Redactable),
@@ -90,58 +150,4 @@ vtables :: proc() {
 	}
 	fmt.println("size_of(User):", size_of(User))
 	log_redacted(&u)
-}
-
-// In this case the struct itself contains pointers to "method" names (rather unnecessarily).
-Cat :: struct {
-	name: string,
-	x:    int,
-	y:    int,
-	meow: proc(cat: ^Cat),
-	move: proc(cat: ^Cat, x, y: int),
-}
-
-meow :: proc(cat: ^Cat) {
-	fmt.println(cat.name, "-", "meow")
-}
-
-move :: proc(cat: ^Cat, x, y: int) {
-	cat.x += x
-	cat.y += y
-	fmt.println(cat.name, "-", "position:", cat.x, cat.y)
-}
-
-newCat :: proc(name: string) -> ^Cat {
-	cat := new(Cat)
-	cat.name = name
-	cat.x = 0
-	cat.y = 0
-	cat.meow = meow
-	cat.move = move
-	return cat
-}
-
-newRudeCat :: proc(name: string) -> ^Cat {
-	cat := newCat(name)
-	cat.meow = proc(cat: ^Cat) {
-		fmt.println(cat.name, "-", "hsssss!")
-	}
-	return cat
-}
-
-Base :: struct {
-	greeting: string,
-}
-
-Derived :: struct {
-	using base: Base,
-	name:       string,
-}
-
-DerivedByPtr :: struct {
-	// `using` can be applied anywhere and even to a pointer.
-	// This allows for a huge amount of control over the memory
-	// layout of the data structure.
-	using base: ^Base,
-	name:       string,
 }
