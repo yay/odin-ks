@@ -1,12 +1,12 @@
 package main
 
 import "../mem_leaks"
+import "base:runtime"
 import "core:encoding/csv"
 import "core:fmt"
 import "core:mem"
-import mem_virtual "core:mem/virtual"
+import "core:mem/virtual"
 import "core:os"
-import "core:runtime"
 import "core:slice"
 import "core:strconv"
 import "core:strings"
@@ -19,10 +19,10 @@ main :: proc() {
 
 csv_file_name :: "/Users/vitaly/pp-monthly.csv"
 
-// growing_arena : mem_virtual.Growing_Arena
-// mem_virtual.arena_init(&growing_arena)
-// defer mem_virtual.arena_destroy(&growing_arena)
-// growing_arena_allocator := mem_virtual.growing_arena_allocator(&growing_arena)
+// growing_arena : virtual.Growing_Arena
+// virtual.arena_init(&growing_arena)
+// defer virtual.arena_destroy(&growing_arena)
+// growing_arena_allocator := virtual.growing_arena_allocator(&growing_arena)
 // context.allocator = growing_arena_allocator
 
 entry_point :: proc() {
@@ -85,10 +85,10 @@ entry_point2 :: proc() {
 		return
 	}
 
-	growing_arena: mem_virtual.Growing_Arena
-	mem_virtual.arena_init(&growing_arena)
-	defer mem_virtual.arena_destroy(&growing_arena)
-	growing_arena_allocator := mem_virtual.growing_arena_allocator(&growing_arena)
+	growing_arena: virtual.Growing_Arena
+	virtual.arena_init(&growing_arena)
+	defer virtual.arena_destroy(&growing_arena)
+	growing_arena_allocator := virtual.growing_arena_allocator(&growing_arena)
 	context.allocator = growing_arena_allocator
 
 	s := string(data)
@@ -108,10 +108,10 @@ entry_point2 :: proc() {
 }
 
 entry_point3 :: proc() {
-	growing_arena: mem_virtual.Growing_Arena
-	mem_virtual.arena_init(&growing_arena)
-	defer mem_virtual.arena_destroy(&growing_arena)
-	growing_arena_allocator := mem_virtual.growing_arena_allocator(&growing_arena)
+	growing_arena: virtual.Growing_Arena
+	virtual.arena_init(&growing_arena)
+	defer virtual.arena_destroy(&growing_arena)
+	growing_arena_allocator := virtual.growing_arena_allocator(&growing_arena)
 	context.allocator = growing_arena_allocator
 
 	data, ok := os.read_entire_file(csv_file_name)
@@ -174,11 +174,11 @@ sheet_demo :: proc() {
 	data, ok := os.read_entire_file(csv_file_name)
 	defer delete(data)
 
-	growing_arena: mem_virtual.Growing_Arena
-	mem_virtual.arena_init(&growing_arena)
-	defer mem_virtual.arena_destroy(&growing_arena)
-	growing_arena_allocator := mem_virtual.growing_arena_allocator(&growing_arena)
-	context.allocator = mem_virtual.growing_arena_allocator(&growing_arena)
+	growing_arena: virtual.Growing_Arena
+	virtual.arena_init(&growing_arena)
+	defer virtual.arena_destroy(&growing_arena)
+	growing_arena_allocator := virtual.growing_arena_allocator(&growing_arena)
+	context.allocator = virtual.growing_arena_allocator(&growing_arena)
 
 	price_paid_entries: [dynamic]^Price_Paid
 	lines: [dynamic]string
@@ -288,10 +288,10 @@ arena_test :: proc() {
 	// defer delete(backing)
 
 	{
-		growing_arena: mem_virtual.Growing_Arena
-		mem_virtual.arena_init(&growing_arena)
-		defer mem_virtual.arena_destroy(&growing_arena)
-		context.allocator = mem_virtual.growing_arena_allocator(&growing_arena)
+		growing_arena: virtual.Growing_Arena
+		virtual.arena_init(&growing_arena)
+		defer virtual.arena_destroy(&growing_arena)
+		context.allocator = virtual.growing_arena_allocator(&growing_arena)
 		fmt.println(context.allocator)
 	}
 

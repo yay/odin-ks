@@ -7,6 +7,7 @@ import "core:strings"
 
 main :: proc() {
 	dir_info()
+	print_args_and_read_input()
 }
 
 dir_info :: proc() {
@@ -18,7 +19,7 @@ dir_info :: proc() {
 
 	if err != os.ERROR_NONE {
 		// Print error to stderr and exit with errorcode
-		fmt.eprintln("Could not open directory for reading", err)
+		fmt.eprintln("Could not open directory for reading:", err)
 		os.exit(1)
 	}
 

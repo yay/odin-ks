@@ -69,7 +69,7 @@ Derived :: struct {
     name:       string,
 }
 
-DerivedByPtr :: struct {
+Derived_By_Ptr :: struct {
     // `using` can be applied anywhere and even to a pointer.
     // This allows for a huge amount of control over the memory
     // layout of the data structure.
@@ -80,7 +80,7 @@ DerivedByPtr :: struct {
 derived :: proc() {
     base: Base
     derived: Derived
-    derivedByPtr: DerivedByPtr
+    derived_by_ptr: Derived_By_Ptr
 
     // Regular print.
     // fmt.println(base)
@@ -90,7 +90,7 @@ derived :: proc() {
     // Pretty print.
     fmt.printf("%#v\n", base)
     fmt.printf("%#v\n", derived)
-    fmt.printf("%#v\n", derivedByPtr)
+    fmt.printf("%#v\n", derived_by_ptr)
 
     base.greeting = "What's up?"
     fmt.println(base)
@@ -99,10 +99,10 @@ derived :: proc() {
     derived.name = "Vitaly"
     fmt.println(derived)
 
-    derivedByPtr.base = new(Base)
-    derivedByPtr.greeting = "Hey"
-    derivedByPtr.name = "Ya!"
-    fmt.println(derivedByPtr)
+    derived_by_ptr.base = new(Base)
+    derived_by_ptr.greeting = "Hey"
+    derived_by_ptr.name = "Ya!"
+    fmt.println(derived_by_ptr)
 }
 
 main :: proc() {

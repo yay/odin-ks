@@ -2,17 +2,17 @@ package main
 
 import "core:fmt"
 
-MyStruct :: struct {
+My_Struct :: struct {
     fred: int,
-    func: proc(s: ^MyStruct) -> int,
+    func: proc(s: ^My_Struct) -> int,
 }
 
-func :: proc(this: ^MyStruct) -> int {
+func :: proc(this: ^My_Struct) -> int {
     return this.fred + 42
 }
 
 main :: proc() {
-    myStruct : MyStruct = {
+    myStruct : My_Struct = {
         fred = 1,
         func = func,
     }

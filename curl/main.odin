@@ -4,10 +4,10 @@ import "../mem_leaks"
 import "core:fmt"
 import "core:mem"
 import "core:os"
-import "core:runtime"
 import "core:slice"
 import "core:strings"
 import "core:thread"
+import "base:runtime"
 
 import "curl"
 
