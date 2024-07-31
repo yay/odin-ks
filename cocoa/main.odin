@@ -8,8 +8,8 @@ import "core:math"
 import CF "core:sys/darwin/CoreFoundation"
 import NS "core:sys/darwin/Foundation"
 
-@(require)
-foreign import "system:Cocoa.framework"
+// @(require)
+// foreign import "system:Cocoa.framework"
 
 // Odin language overview:
 // https://odin-lang.org/docs/overview/
@@ -49,7 +49,12 @@ run :: proc() {
 	// An autorelease pool stores objects that are sent a release message when the pool itself is drained.
 	// If you use Automatic Reference Counting (ARC), you cannot use autorelease pools directly.
 	// Instead, you use @autoreleasepool blocks (in Objective C).
+	// Cocoa expects there to be an autorelease pool always available. If you send an `autorelease` message
+	// outside of an autorelease pool block, Cocoa logs a suitable error message.
+	// https://developer.apple.com/library/archive/documentation/Cocoa/Conceptual/MemoryMgmt/Articles/mmAutoreleasePools.html
 	// https://developer.apple.com/documentation/foundation/nsautoreleasepool
+	// https://developer.apple.com/documentation/os/logging/viewing_log_messages?language=objc
+	// https://useyourloaf.com/blog/fetching-oslog-messages-in-swift/
 	NS.scoped_autoreleasepool()
 	// Abbreviations:
 	// NS = NextStep
@@ -69,6 +74,9 @@ run :: proc() {
 	// https://developer.apple.com/documentation/appkit/nsapplication/activationpolicy
 	if (!app->setActivationPolicy(.Regular)) do return
 
+	// A delegate is an object that is notified when the app starts or terminates, is hidden or activated,
+	// should open a file selected by the user, and so forth. By setting the delegate and implementing
+	// the delegate methods, you customize the behavior of your app without having to subclass NSApplication.
 	app_delegate := NS.application_delegate_register_and_alloc({
 		applicationShouldTerminateAfterLastWindowClosed = proc(
 			_: ^NS.Application,
